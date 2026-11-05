@@ -31,7 +31,7 @@ STARTUP_MSG = """
 /apps — Browse all installed apps
 /launch `appname` — Open any app
 /media_route_reveal — Check where media files are going
-/change_media_route `path` — Route media to gemma4 or folder
+/change_media_route `path` — Route media to minicpm, qwen, or folder
 /control\\_antigravity `prompt` — Control IDE
 
 *Interactions:*
@@ -77,7 +77,7 @@ async def handle_media_route_reveal(update: Update, context):
 
 async def handle_change_media_route(update: Update, context):
     if not context.args:
-        await update.message.reply_text("Usage: `/change_media_route <gemma4|whisper|qwen|C:\\path\\to\\folder>`", parse_mode="Markdown")
+        await update.message.reply_text("Usage: `/change_media_route <minicpm|qwen|whisper|C:\\path\\to\\folder>`", parse_mode="Markdown")
         return
     route = " ".join(context.args)
     from plugins.routing import set_media_route
@@ -116,9 +116,8 @@ def main():
             BotCommand("launch", "Launch an app (usage: /launch <app>)"),
             BotCommand("run", "Run a raw shell command"),
             BotCommand("restart_bot", "Restart bot service"),
-            BotCommand("gemma4", "Chat with Gemma 4 12B"),
-            BotCommand("gemma", "Chat directly with Gemma 2B"),
-            BotCommand("qwen", "Chat directly with Qwen 7B"),
+            BotCommand("minicpm", "Chat with MiniCPM 2B Vision"),
+            BotCommand("qwen", "Chat directly with Qwen 2.5 Coder 7B"),
             BotCommand("media_route_reveal", "Show current media route"),
             BotCommand("change_media_route", "Change media destination"),
         ]

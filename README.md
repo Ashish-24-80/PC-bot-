@@ -40,9 +40,9 @@ Designed as both a standalone personal remote desktop companion and a **Manual H
 │   LOCAL FLASK    │          │  AI ROUTER  │ │  WINDOWS OS    │
 │  (Port: 58392)   │          │ (plugins/   │ │ (Subprocesses) │
 │                  │          │  routing)   │ │                │
-│ - trackpad.html  │          │             │ │ - Everything   │
-│ - MJPEG Stream   │◄─────────┤ - Gemma4    │ │ - PyAutoGUI    │
-│ - Cloudflare     │          │ - Whisper   │ │ - pycaw / mss  │
+│ - trackpad.html  │          │ - Whisper   │ │ - Everything   │
+│ - MJPEG Stream   │◄─────────┤ - MiniCPM   │ │ - PyAutoGUI    │
+│ - Cloudflare     │          │ - QwenCoder │ │ - pycaw / mss  │
 │   Tunnel         │          │ - Qwen      │ │ - Winget CLI   │
 └──────────────────┘          └─────────────┘ └────────────────┘
 ```
@@ -121,7 +121,7 @@ Designed as both a standalone personal remote desktop companion and a **Manual H
 | `/web_search <query>` | `web.py` | Search Google in default browser |
 | `/web_ai <prompt>` | `web.py` | Open Perplexity AI search in browser |
 | `/media_route_reveal` | `routing.py` | Check current routing destination for audio/images |
-| `/change_media_route <target>` | `routing.py` | Route media to Gemma4, Whisper, Qwen, or folder |
+| `/change_media_route <target>` | `routing.py` | Route media to MiniCPM, Qwen, Whisper, or folder |
 | `/vol_up` / `/vol_down` / `/mute`| `volume.py` | System volume control |
 | `/sleep` / `/lock` / `/logout` | `system.py` | System power states |
 | `/restart_bot` | Core | Gracefully reload bot process |

@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Automatic Command Autocomplete Sync**: Dynamic registration of all loaded plugins directly with Telegram's bot menu via `application.bot.set_my_commands()`.
 
 ### Fixed
+- **Local AI Model Inventory Alignment**: Synchronized model configurations with `C:\llama.cpp\models\`. Noted removal of Gemma 2B due to disk storage limitations and updated active models to `MiniCPM5-2B-F16.gguf` (multimodal vision + small text, launched via `run-AI -small.bat`) and `qwen2.5-coder-7b-instruct-q4_k_m.gguf` (launched via `run-AI.bat`).
+- **Media Route Update**: Switched default `MEDIA_ROUTE` in `plugins/routing.py` from obsolete `gemma4` to `minicpm` (retaining legacy fallback aliases), and aligned bot command shortcuts and startup messages.
 - **Media Routing Registration**: Moved `/media_route_reveal` and `/change_media_route` handlers outside the optional `plugins.voice` try block in `bot.py` so they are always registered even when voice packages are absent.
 - **Multimodal Image Upload Fallback**: Protected incoming image uploads in `plugins/files.py` with try/except so absence of `plugins.voice` gracefully falls back to saving files in `Downloads/WexxyBot/`.
 - **Nebula Dashboard Template Path**: Fixed `nebula_dashboard/app.py` to resolve `index.html` relative to script directory rather than process working directory.

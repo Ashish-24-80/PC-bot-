@@ -29,7 +29,7 @@ Wexxy is a bridge between the Human Operator, the Local OS environment, and auto
 
 ### What is Wexxy PC Bot?
 
-At its core, __Wexxy PC Bot__ is an omnipresent, highly modular remote-control interface for Windows. It integrates native system control tools, a fully local voice AI pipeline (`faster-whisper` + `Gemma 2B` + `Qwen 7B`), and a low-latency, absolute-precision screen streaming touchpad server.
+At its core, __Wexxy PC Bot__ is an omnipresent, highly modular remote-control interface for Windows. It integrates native system control tools, a fully local voice/multimodal AI pipeline (`faster-whisper` + `MiniCPM 2B Vision` + `Qwen 2.5 Coder 7B`), and remote desktop control (RustDesk).
 
 ### The "Agentic AI Unblocker" Vision
 
@@ -116,7 +116,7 @@ Developers, system administrators, power users, and AI operators who need lightw
 │  (Port: 5000)    │          │  PIPELINE   │ │ (Subprocesses) │
 │                  │          │             │ │                │
 │ - trackpad.html  │          │ - Whisper   │ │ - Everything   │
-│ - MJPEG Stream   │◄─────────┤ - Gemma 2B  │ │ - PyAutoGUI    │
+│ - MJPEG Stream   │◄─────────┤ - MiniCPM 2B│ │ - PyAutoGUI    │
 │ - Mouse/Key APIs │          │ - Qwen 7B   │ │ - pycaw / mss  │
 └──────────────────┘          └─────────────┘ └────────────────┘
 
@@ -344,8 +344,8 @@ Wexxy features an offline, local voice and text assistant pipeline. It is hosted
 2. __Robust Transcription:__ The WAV file is loaded into `faster-whisper`.
     * __Primary Path:__ Offloaded to a local CUDA `small` model with 16-bit precision.
     * __Fallback Path:__ If CUDA is busy or fails, it switches to a `tiny` CPU-bound model, preventing timeouts.
-3. __Intent Classification:__ Simple commands are classified by Gemma 2B and immediately routed to the appropriate local plugin.
-4. __Agent Scripting:__ Complex tasks are handled by __Qwen 7B__, which writes custom Python scripts to execute the request.
+3. __Intent Classification & Multimodal Vision:__ Tasks and images are handled by MiniCPM 2B Vision (`MiniCPM5-2B-F16.gguf`) or routed to Qwen. (Note: Gemma 2B was previously used but was removed due to disk storage limitations).
+4. __Agent Scripting:__ Complex tasks and code generation are handled by __Qwen 2.5 Coder 7B__ (`qwen2.5-coder-7b-instruct-q4_k_m.gguf`), which writes custom Python scripts to execute requests.
 
 ### 7.2 The AI Self-Correction Loop
 
@@ -548,8 +548,10 @@ pyperclip==1.11.0
 * __Whisper Speech-to-Text:__ Models (`small` and `tiny`) are stored in `C:\Users\SUBU\AppData\Local\com.autosubs\models\`.
 * __LLM Inference Server (`llama.cpp`):__
     * Binary path: `C:\llama.cpp\llama-server.exe`
-    * __Gemma 2B Model:__ `C:\llama.cpp\models\gemma-2-2b-it-Q4_K_M.gguf` (Port 8080)
-    * __Qwen 7B Model:__ `C:\llama.cpp\models\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf` (Port 8081)
+    * Model directory: `C:\llama.cpp\models\`
+    * _Note: Gemma 2B was removed due to storage constraints and replaced with MiniCPM-V and unified Qwen Coder._
+    * __MiniCPM 2B Vision Model:__ `C:\llama.cpp\models\MiniCPM5-2B-F16.gguf` (Run via `run-AI -small.bat` or port 8080)
+    * __Qwen 2.5 Coder 7B Model:__ `C:\llama.cpp\models\qwen2.5-coder-7b-instruct-q4_k_m.gguf` (Run via `run-AI.bat` or port 8081)
 
 ### 11.4 Environment Configuration & Security
 
@@ -664,8 +666,8 @@ To maintain full system observability, this section lists historically resolved 
 #### C. Local LLM VRAM Contention on Nvidia RTX GPUs
 
 * __Symptom:__ Executing complex script-generation voice notes while running highly active graphic processes (such as games or video rendering) triggers CUDA memory fragmentation crashes inside `llama.cpp` or PyTorch.
-* __Root Cause:__ The GPU has a finite memory ceiling (VRAM). Running Gemma 2B and Qwen 7B simultaneously offloads several GGUF layers (`-ngl 99`) to the GPU, leaving thin VRAM margins.
-* __Current Workaround:__ Gemma 2B is loaded immediately on start because of its compact size (2.2GB). Qwen 7B is lazily loaded only when a complex reasoning path is explicitly demanded, releasing memory after operation.
+* __Root Cause:__ The GPU has a finite memory ceiling (6GB VRAM on RTX 3050). Gemma 2B was previously removed due to storage issues, leaving MiniCPM 2B Vision (`MiniCPM5-2B-F16.gguf`) and Qwen 2.5 Coder 7B (`qwen2.5-coder-7b-instruct-q4_k_m.gguf`). Running a 7B model offloads several GGUF layers (`-ngl 99`) to the GPU, leaving thin VRAM margins when gaming or rendering.
+* __Current Workaround:__ Run models on demand using the dedicated launcher scripts in `C:\llama.cpp\models\`: `run-AI -small.bat` for MiniCPM (multimodal/lightweight) or `run-AI.bat` for Qwen Coder. Only load one model at a time into GPU memory.
 
 #### D. Temporary Zero-Config Tunnel Expirations
 
