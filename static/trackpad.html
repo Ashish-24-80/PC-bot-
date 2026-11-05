@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Wexxy Remote</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #7c6af7;
+    --accent2: #f76a8a;
+    --text: #e0deff;
+    --muted: #5a5875;
+    --green: #4ade80;
+    --red: #f87171;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Tab bar ── */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 14px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.2s;
+    position: relative;
+  }
+
+  .tab.active {
+    color: var(--accent);
+  }
+
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 20%; right: 20%;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* ── Panels ── */
+  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* ── Touchpad panel ── */
+  .touchpad-area {
+    flex: 1;
+    position: relative;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(124,106,247,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 70%, rgba(247,106,138,0.04) 0%, transparent 50%),
+      var(--bg);
+    cursor: none;
+    touch-action: none;
+  }
+
+  /* Crosshair cursor dot */
+  .cursor-dot {
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: transform 0.05s, opacity 0.1s;
+    box-shadow: 0 0 12px var(--accent);
+    opacity: 0;
+    z-index: 10;
+  }
+
+  .cursor-dot.visible { opacity: 1; }
+  .cursor-dot.clicking { transform: translate(-50%, -50%) scale(0.6); }
+
+  /* Grid lines for depth */
+  .touchpad-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+  }
+
+  /* Center label */
+  .touchpad-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    opacity: 0.25;
+    transition: opacity 0.3s;
+  }
+
+  .touchpad-label.hidden { opacity: 0; }
+
+  .touchpad-label svg {
+    width: 48px; height: 48px;
+    fill: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .touchpad-label p {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Bottom controls ── */
+  .controls {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px 0;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn:active { transform: scale(0.95); background: var(--border); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn.danger  { background: var(--red);    border-color: var(--red);    color: white; }
+  .btn.success { background: var(--green);  border-color: var(--green);  color: #0a0a0f; }
+
+  /* Mode indicator */
+  .mode-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .mode-pill {
+    background: var(--border);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Stream panel ── */
+  .stream-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #000;
+    overflow: hidden;
+  }
+
+  .stream-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #stream-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .stream-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stream-overlay p {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Keys panel ── */
+  .keys-panel {
+    flex: 1;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  .key-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 16px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.1s, transform 0.1s;
+    letter-spacing: 0.02em;
+  }
+
+  .key-btn:active { transform: scale(0.92); background: var(--border); }
+  .key-btn.wide { grid-column: span 2; }
+  .key-btn.accent { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Keyboard input ── */
+  .keyboard-input {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .keyboard-input input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .keyboard-input input:focus { border-color: var(--accent); }
+
+  .keyboard-input button {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- Tab bar -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('touchpad')">🖱 Touchpad</div>
+  <div class="tab" onclick="switchTab('stream')">📺 Stream</div>
+  <div class="tab" onclick="switchTab('keys')">⌨️ Keys</div>
+</div>
+
+<!-- ── TOUCHPAD PANEL ── -->
+<div class="panel active" id="panel-touchpad">
+  <div class="touchpad-area" id="touchpad">
+    <div class="cursor-dot" id="cursor"></div>
+    <div class="touchpad-label" id="tp-label">
+      <svg viewBox="0 0 24 24"><path d="M13 1a5 5 0 0 1 5 5v8a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5V6a5 5 0 0 1 5-5h2zm-1 2a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3h-2zm1 3a1 1 0 0 1 1 1v3a1 1 0 0 1-2 0V7a1 1 0 0 1 1-1z"/></svg>
+      <p>Drag to move · Tap to click</p>
+    </div>
+  </div>
+
+  <div class="mode-bar">
+    <div class="status-dot"></div>
+    <span>Connected</span>
+    <div class="mode-pill" id="mode-label">MOVE</div>
+    <span style="margin-left:auto; font-size:10px;" id="pos-label">—</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="sendClick('left')">Left Click</button>
+    <button class="btn" onclick="sendClick('right')">Right Click</button>
+    <button class="btn" onclick="sendClick('double')">Double</button>
+  </div>
+</div>
+
+<!-- ── STREAM PANEL ── -->
+<div class="panel" id="panel-stream">
+  <div class="stream-panel">
+    <div class="stream-container">
+      <img id="stream-img" src="/stream" alt="stream"
+           onload="document.getElementById('stream-overlay').style.display='none'"
+           onerror="showStreamError()" style="display:none">
+      <div class="stream-overlay" id="stream-overlay">
+        <div class="spinner"></div>
+        <p>Connecting to stream...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── KEYS PANEL ── -->
+<div class="panel" id="panel-keys">
+  <div class="keys-panel">
+    <button class="key-btn wide accent" onclick="sendKey('win')">⊞ Win</button>
+    <button class="key-btn wide accent" onclick="sendKey('tab')">Tab</button>
+    <button class="key-btn" onclick="sendKey('ctrl+c')">Copy</button>
+    <button class="key-btn" onclick="sendKey('ctrl+v')">Paste</button>
+    <button class="key-btn" onclick="sendKey('ctrl+z')">Undo</button>
+    <button class="key-btn" onclick="sendKey('ctrl+a')">Sel All</button>
+    <button class="key-btn" onclick="sendKey('alt+tab')">Alt+Tab</button>
+    <button class="key-btn" onclick="sendKey('alt+f4')">Alt+F4</button>
+    <button class="key-btn" onclick="sendKey('escape')">Esc</button>
+    <button class="key-btn" onclick="sendKey('delete')">Del</button>
+    <button class="key-btn" onclick="sendKey('backspace')">←</button>
+    <button class="key-btn" onclick="sendKey('enter')">↵</button>
+    <button class="key-btn" onclick="sendKey('up')">↑</button>
+    <button class="key-btn" onclick="sendKey('down')">↓</button>
+    <button class="key-btn" onclick="sendKey('left')">←</button>
+    <button class="key-btn" onclick="sendKey('right')">→</button>
+    <button class="key-btn wide" onclick="sendKey('ctrl+shift+esc')">Task Mgr</button>
+    <button class="key-btn wide" onclick="sendKey('ctrl+alt+delete')">Ctrl+Alt+Del</button>
+    <button class="key-btn wide" onclick="sendKey('volumemute')">🔇 Mute</button>
+    <button class="key-btn" onclick="sendKey('volumeup')">🔊+</button>
+    <button class="key-btn" onclick="sendKey('volumedown')">🔉-</button>
+    <button class="key-btn wide" onclick="sendKey('printscreen')">Screenshot</button>
+  </div>
+
+  <div class="keyboard-input">
+    <input type="text" id="type-input" placeholder="Type text to send..." autocomplete="off">
+    <button onclick="sendText()">Send</button>
+  </div>
+</div>
+
+<script>
+// ── Auth Token ───────────────────────────────────────────────────────────────
+const urlParams = new URLSearchParams(window.location.search);
+const authToken = urlParams.get('token') || '';
+
+// ── Tab switching ───────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['touchpad','stream','keys'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+
+  // Lazy load stream
+  if (name === 'stream') {
+    const img = document.getElementById('stream-img');
+    img.style.display = 'block';
+    img.src = '/stream?token=' + encodeURIComponent(authToken) + '&t=' + Date.now();
+  }
+}
+
+// ── Remote PC Info ──────────────────────────────────────────────────────────
+let pcW = 1920, pcH = 1080;
+fetch('/info?token=' + encodeURIComponent(authToken))
+  .then(r => r.json())
+  .then(d => { if(d.w) pcW = d.w; if(d.h) pcH = d.h; })
+  .catch(e => console.log(e));
+
+// ── Absolute Touch Stream Logic ─────────────────────────────────────────────
+const streamImg = document.getElementById('stream-img');
+
+function getAbsoluteCoords(e) {
+  const rect = streamImg.getBoundingClientRect();
+  let clientX = e.clientX, clientY = e.clientY;
+  if (e.touches && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  }
+  let x = clientX - rect.left;
+  let y = clientY - rect.top;
+  let imgRatio = pcW / pcH;
+  let containerRatio = rect.width / rect.height;
+  let drawWidth = rect.width, drawHeight = rect.height;
+  let offsetX = 0, offsetY = 0;
+  if (imgRatio > containerRatio) {
+    drawHeight = drawWidth / imgRatio;
+    offsetY = (rect.height - drawHeight) / 2;
+  } else {
+    drawWidth = drawHeight * imgRatio;
+    offsetX = (rect.width - drawWidth) / 2;
+  }
+  x -= offsetX; y -= offsetY;
+  x = Math.max(0, Math.min(x, drawWidth));
+  y = Math.max(0, Math.min(y, drawHeight));
+  return { x: (x / drawWidth) * pcW, y: (y / drawHeight) * pcH };
+}
+
+streamImg.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const c = getAbsoluteCoords(e);
+  post('/mouse', { action: 'move_absolute', x: c.x, y: c.y });
+  post('/mouse', { action: 'click', button: 'left' });
+}, {passive: false});
+
+streamImg.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const c = getAbsoluteCoords(e);
+  post('/mouse', { action: 'move_absolute', x: c.x, y: c.y });
+}, {passive: false});
+
+streamImg.addEventListener('mousedown', e => {
+  e.preventDefault();
+  const c = getAbsoluteCoords(e);
+  post('/mouse', { action: 'move_absolute', x: c.x, y: c.y });
+  post('/mouse', { action: 'click', button: 'left' });
+});
+
+// ── Touchpad logic ──────────────────────────────────────────────────────────
+const touchpad  = document.getElementById('touchpad');
+const cursor    = document.getElementById('cursor');
+const tpLabel   = document.getElementById('tp-label');
+const modeLabel = document.getElementById('mode-label');
+const posLabel  = document.getElementById('pos-label');
+
+let lastX = 0, lastY = 0;
+let touching = false;
+let touchStartTime = 0;
+let touchStartX = 0, touchStartY = 0;
+let moved = false;
+
+const SENSITIVITY = 1.8;
+const TAP_THRESHOLD_MS = 200;
+const TAP_MOVE_PX = 10;
+
+touchpad.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  lastX = t.clientX;
+  lastY = t.clientY;
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touchStartTime = Date.now();
+  touching = true;
+  moved = false;
+
+  cursor.classList.add('visible');
+  cursor.style.left = t.clientX + 'px';
+  cursor.style.top  = t.clientY + 'px';
+  tpLabel.classList.add('hidden');
+
+  if (e.touches.length === 2) {
+    modeLabel.textContent = 'SCROLL';
+  } else {
+    modeLabel.textContent = 'MOVE';
+  }
+}, { passive: false });
+
+touchpad.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!touching) return;
+
+  if (e.touches.length === 2) {
+    // Two-finger scroll
+    const t = e.touches[0];
+    const dy = t.clientY - lastY;
+    lastX = e.touches[0].clientX;
+    lastY = t.clientY;
+    post('/mouse', { action: 'scroll', dy });
+    modeLabel.textContent = 'SCROLL';
+    return;
+  }
+
+  const t = e.touches[0];
+  const dx = (t.clientX - lastX) * SENSITIVITY;
+  const dy = (t.clientY - lastY) * SENSITIVITY;
+
+  const totalMoved = Math.abs(t.clientX - touchStartX) + Math.abs(t.clientY - touchStartY);
+  if (totalMoved > TAP_MOVE_PX) moved = true;
+
+  lastX = t.clientX;
+  lastY = t.clientY;
+
+  cursor.style.left = t.clientX + 'px';
+  cursor.style.top  = t.clientY + 'px';
+  posLabel.textContent = `Δ${dx.toFixed(0)}, ${dy.toFixed(0)}`;
+
+  post('/mouse', { action: 'move', dx: Math.round(dx), dy: Math.round(dy) });
+}, { passive: false });
+
+touchpad.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (!touching) return;
+  touching = false;
+  cursor.classList.remove('visible');
+
+  const duration = Date.now() - touchStartTime;
+  const wasTap = !moved && duration < TAP_THRESHOLD_MS;
+
+  if (wasTap) {
+    const fingerCount = e.changedTouches.length + e.touches.length;
+    cursor.classList.add('clicking');
+    setTimeout(() => cursor.classList.remove('clicking'), 150);
+
+    if (fingerCount >= 2) {
+      post('/mouse', { action: 'click', button: 'right' });
+      modeLabel.textContent = 'RIGHT CLICK';
+    } else {
+      post('/mouse', { action: 'click', button: 'left' });
+      modeLabel.textContent = 'CLICK';
+    }
+    setTimeout(() => modeLabel.textContent = 'MOVE', 800);
+  }
+
+  setTimeout(() => tpLabel.classList.remove('hidden'), 2000);
+}, { passive: false });
+
+// ── Click buttons ───────────────────────────────────────────────────────────
+function sendClick(type) {
+  if (type === 'double') {
+    post('/mouse', { action: 'click', button: 'left' });
+    setTimeout(() => post('/mouse', { action: 'click', button: 'left' }), 80);
+  } else {
+    post('/mouse', { action: 'click', button: type });
+  }
+  modeLabel.textContent = type.toUpperCase() + ' CLICK';
+  setTimeout(() => modeLabel.textContent = 'MOVE', 800);
+}
+
+// ── Key buttons ─────────────────────────────────────────────────────────────
+function sendKey(key) {
+  post('/mouse', { action: 'keypress', key });
+}
+
+function sendText() {
+  const input = document.getElementById('type-input');
+  const text = input.value;
+  if (!text) return;
+  post('/mouse', { action: 'typetext', text: text });
+  input.value = '';
+}
+
+// ── Stream error ─────────────────────────────────────────────────────────────
+function showStreamError() {
+  const overlay = document.getElementById('stream-overlay');
+  overlay.innerHTML = '<p style="color:#f87171">Stream unavailable</p><p style="font-size:11px;color:#5a5875">Start Touchpad first</p>';
+  overlay.style.display = 'flex';
+}
+
+// ── HTTP helper ──────────────────────────────────────────────────────────────
+async function post(url, data) {
+  try {
+    const targetUrl = authToken ? `${url}?token=${encodeURIComponent(authToken)}` : url;
+    await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Auth-Token': authToken
+      },
+      body: JSON.stringify(data)
+    });
+  } catch (e) { /* silent */ }
+}
+</script>
+</body>
+</html>

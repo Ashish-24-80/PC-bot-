@@ -1,0 +1,265 @@
+import threading
+import subprocess
+import re
+import time
+import io
+import pyautogui
+import mss
+from flask import Flask, Response, request, jsonify, send_file
+from config import CLOUDFLARED_PATH, FLASK_PORT, STREAM_FPS, STREAM_QUALITY
+
+flask_app = Flask(__name__)
+_server_thread = None
+_cloudflared_proc = None
+_tunnel_url = None
+_running = False
+
+import secrets
+
+_auth_token = None
+
+def get_auth_token():
+    global _auth_token
+    if not _auth_token:
+        _auth_token = secrets.token_hex(16)
+    return _auth_token
+
+@flask_app.before_request
+def check_auth():
+    token = request.args.get("token") or request.headers.get("X-Auth-Token")
+    if not token or token != get_auth_token():
+        return (
+            "<html><body style='background:#0a0a0f;color:#f87171;font-family:sans-serif;"
+            "display:flex;align-items:center;justify-content:center;height:100vh;margin:0;'>"
+            "<div style='text-align:center;'><h2>🔒 401 Unauthorized</h2>"
+            "<p style='color:#5a5875;margin-top:8px;'>Valid session token required to access remote PC control.</p></div></body></html>",
+            401
+        )
+
+# ── Mouse control endpoint ──────────────────────────────────────────────────
+
+@flask_app.route("/info")
+def info():
+    w, h = pyautogui.size()
+    return jsonify({"w": w, "h": h})
+
+@flask_app.route("/mouse", methods=["POST"])
+def mouse():
+    data = request.json or {}
+    action = data.get("action")
+    screen_w, screen_h = pyautogui.size()
+
+    if action == "move":
+        dx = data.get("dx", 0)
+        dy = data.get("dy", 0)
+        x, y = pyautogui.position()
+        new_x = max(0, min(screen_w, x + dx))
+        new_y = max(0, min(screen_h, y + dy))
+        pyautogui.moveTo(new_x, new_y, duration=0)
+
+    elif action == "move_absolute":
+        x = data.get("x", 0)
+        y = data.get("y", 0)
+        # Constrain to screen bounds
+        new_x = max(0, min(screen_w, int(x)))
+        new_y = max(0, min(screen_h, int(y)))
+        pyautogui.moveTo(new_x, new_y, duration=0)
+
+    elif action == "click":
+        button = data.get("button", "left")
+        pyautogui.click(button=button)
+
+    elif action == "scroll":
+        dy = data.get("dy", 0)
+        pyautogui.scroll(int(-dy / 30))
+
+    elif action == "keypress":
+        key = data.get("key", "")
+        if key:
+            # Handle combos like ctrl+c, alt+tab
+            if "+" in key:
+                parts = key.split("+")
+                pyautogui.hotkey(*parts)
+            else:
+                pyautogui.press(key)
+
+    elif action == "typetext":
+        text = data.get("text", "")
+        if text:
+            pyautogui.typewrite(text, interval=0.03)
+
+    return jsonify({"ok": True})
+
+# ── MJPEG stream endpoint ───────────────────────────────────────────────────
+
+def generate_frames():
+    with mss.mss() as sct:
+        monitor = sct.monitors[1]  # primary monitor
+        while _running:
+            img = sct.grab(monitor)
+            # Convert to PIL Image
+            from PIL import Image, ImageDraw
+            pil_img = Image.frombytes("RGB", img.size, img.bgra, "raw", "BGRX")
+            
+            # Draw mouse cursor
+            mx, my = pyautogui.position()
+            rel_x = mx - monitor["left"]
+            rel_y = my - monitor["top"]
+            
+            # Classic arrow cursor polygon
+            cursor_poly = [
+                (rel_x, rel_y),
+                (rel_x, rel_y + 17),
+                (rel_x + 4, rel_y + 13),
+                (rel_x + 8, rel_y + 20),
+                (rel_x + 11, rel_y + 18),
+                (rel_x + 7, rel_y + 12),
+                (rel_x + 12, rel_y + 12)
+            ]
+            draw = ImageDraw.Draw(pil_img)
+            draw.polygon(cursor_poly, fill="white", outline="black")
+
+            pil_img = pil_img.resize((1280, 720), Image.LANCZOS)
+            buf = io.BytesIO()
+            pil_img.save(buf, format="JPEG", quality=STREAM_QUALITY)
+            frame = buf.getvalue()
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+            )
+            time.sleep(1 / STREAM_FPS)
+
+@flask_app.route("/stream")
+def stream():
+    return Response(
+        generate_frames(),
+        mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
+
+# ── Trackpad HTML UI ────────────────────────────────────────────────────────
+
+@flask_app.route("/")
+def index():
+    html_path = os.path.join(os.path.dirname(__file__), "..", "static", "trackpad.html")
+    return send_file(os.path.abspath(html_path))
+
+# ── Flask server thread ─────────────────────────────────────────────────────
+
+def run_flask():
+    import logging
+    log = logging.getLogger("werkzeug")
+    log.setLevel(logging.ERROR)
+    flask_app.run(host="0.0.0.0", port=FLASK_PORT, threaded=True)
+
+# ── Cloudflared tunnel ──────────────────────────────────────────────────────
+
+def start_tunnel():
+    global _cloudflared_proc, _tunnel_url
+    _tunnel_url = None
+    
+    # Kill any dangling cloudflared processes to prevent conflicts
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "cloudflared.exe"], capture_output=True)
+    except Exception:
+        pass
+        
+    _cloudflared_proc = subprocess.Popen(
+        [CLOUDFLARED_PATH, "tunnel", "--no-autoupdate", "--url", f"http://127.0.0.1:{FLASK_PORT}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+    
+    def _read_output():
+        global _tunnel_url
+        try:
+            for line in iter(_cloudflared_proc.stdout.readline, ''):
+                if not line:
+                    break
+                if not _tunnel_url:
+                    match = re.search(r"https://[a-z0-9\-]+\.trycloudflare\.com", line)
+                    if match:
+                        _tunnel_url = match.group(0)
+        except Exception:
+            pass
+
+    reader_thread = threading.Thread(target=_read_output, daemon=True)
+    reader_thread.start()
+
+# ── Plugin handlers ─────────────────────────────────────────────────────────
+
+async def handle_start_touchpad(update, context):
+    global _server_thread, _running, _tunnel_url, _auth_token
+
+    token = get_auth_token()
+    if _running and _tunnel_url:
+        auth_url = f"{_tunnel_url}/?token={token}"
+        await update.message.reply_text(
+            f"✅ Already running!\n🔗 `{auth_url}`\n\n"
+            f"Open link → touch to control mouse, tap stream tab to view screen.",
+            parse_mode="Markdown"
+        )
+        return
+
+    _running = True
+
+    # Start Flask
+    _server_thread = threading.Thread(target=run_flask, daemon=True)
+    _server_thread.start()
+
+    await update.message.reply_text("⏳ Starting tunnel... (takes ~5 seconds)")
+
+    # Start cloudflared in thread so we can await
+    tunnel_thread = threading.Thread(target=start_tunnel, daemon=True)
+    tunnel_thread.start()
+    
+    # Poll for _tunnel_url up to 15 seconds
+    for _ in range(30):
+        if _tunnel_url:
+            break
+        await asyncio.sleep(0.5)
+
+    if _tunnel_url:
+        auth_url = f"{_tunnel_url}/?token={token}"
+        await update.message.reply_text(
+            f"🔒 *Touchpad + Stream Ready (Secure Session)*\n\n"
+            f"🔗 `{auth_url}`\n\n"
+            f"Open authenticated link on your phone:\n"
+            f"• *Drag* → move mouse\n"
+            f"• *Tap* → left click\n"
+            f"• *Two-finger tap* → right click\n"
+            f"• *Two-finger scroll* → scroll\n"
+            f"• Tap *Stream* tab → live screen view",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text("❌ Tunnel failed to start. Check cloudflared path in config.py.")
+
+async def handle_stop_touchpad(update, context):
+    global _running, _cloudflared_proc, _tunnel_url, _auth_token
+
+    _running = False
+    _auth_token = None  # Revoke current token
+    if _cloudflared_proc:
+        _cloudflared_proc.terminate()
+        _cloudflared_proc = None
+    _tunnel_url = None
+    await update.message.reply_text("🛑 Touchpad & stream stopped. Token revoked.")
+
+PLUGINS = [
+    {
+        "name": "Touchpad",
+        "command": "touchpad",
+        "description": "Start remote touchpad + screen stream",
+        "handler": handle_start_touchpad,
+        "row": 4,
+    },
+    {
+        "name": "No Touch",
+        "command": "stop_touchpad",
+        "description": "Stop touchpad server — formerly 'Stop Touchpad'",
+        "handler": handle_stop_touchpad,
+        "row": 4,
+    },
+]

@@ -1,0 +1,8 @@
+python-telegram-bot
+pyautogui
+psutil
+pycaw
+comtypes
+pillow
+flask
+mss

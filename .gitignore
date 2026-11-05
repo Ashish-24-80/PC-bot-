@@ -1,0 +1,55 @@
+# Wexxy PC Bot .gitignore
+
+# Sensitive configuration & secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json
+*secret*
+*token*
+
+# Runtime lock and process state
+*.lock
+wexxy.bot.lock
+
+# Logs
+*.log
+logs/
+wexxy.log
+bot.log
+
+# Large vendorized dependencies (installed via --target libs)
+libs/
+
+# Temporary visual / OCR captures
+*.png
+*.jpg
+*.jpeg
+vision_temp.png
+ocr_temp.png
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini

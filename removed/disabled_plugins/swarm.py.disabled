@@ -1,0 +1,185 @@
+# plugins/swarm.py
+"""
+Wexxy ↔ Swarm System Bridge Plugin
+
+This plugin connects the Telegram bot to the Swarm System's FastAPI
+server running on localhost:5010. It provides three commands:
+
+  /swarm <task>     — Start a new hierarchical agentic optimization task
+  /swarm_status     — Check the status of the running task
+  /swarm_stop       — Cancel the currently running task
+
+The Swarm System must be running separately (run.bat or python api.py
+in the SwarmSystem project folder).
+"""
+
+import requests
+from telegram import Update
+
+SWARM_API = "http://localhost:5010"
+TIMEOUT = 10  # HTTP request timeout in seconds
+
+# Track the last active task globally for this bot instance
+current_task_id = None
+current_task_input = None
+
+async def handle_swarm(update: Update, context):
+    """Start a new swarm task."""
+    global current_task_id, current_task_input
+    
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: `/swarm <task description>`\n\n"
+            "Example:\n"
+            "`/swarm Write a Python script that calculates prime numbers efficiently`\n\n"
+            "The Swarm System must be running on port 5010.",
+            parse_mode="Markdown",
+        )
+        return
+
+    task = " ".join(context.args)
+    msg = await update.message.reply_text(
+        f"🧠 *Sending to Swarm System...*\n`{task}`",
+        parse_mode="Markdown",
+    )
+
+    try:
+        # Phase 3 API expects {"prompt": "..."} and thread_id for persistent memory
+        resp = requests.post(
+            f"{SWARM_API}/run",
+            json={
+                "prompt": task, 
+                "thread_id": f"wexxy-tg-{update.effective_user.id}"
+            },
+            timeout=TIMEOUT,
+        )
+        
+        if resp.status_code != 200:
+            await msg.edit_text(f"⚠️ API Error: {resp.text}")
+            return
+            
+        data = resp.json()
+        current_task_id = data.get("task_id", "?")
+        current_task_input = task
+        
+        await msg.edit_text(
+            f"✅ *Swarm task started*\n"
+            f"ID: `{current_task_id}`\n"
+            f"Task: `{task}`\n\n"
+            f"Use /swarm\\_status to check progress.",
+            parse_mode="Markdown",
+        )
+    except requests.ConnectionError:
+        await msg.edit_text(
+            "❌ *Swarm System is not running.*\n\n"
+            "Start it first:\n"
+            "`cd C:\\Users\\SUBU\\Documents\\1MY_APPs\\SwarmSystem`\n"
+            "`run.bat`",
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        await msg.edit_text(f"❌ Error: {e}")
+
+
+async def handle_swarm_status(update: Update, context):
+    """Check the status of the current/last swarm task."""
+    global current_task_id, current_task_input
+    
+    if not current_task_id:
+        await update.message.reply_text("💤 No swarm task is currently being tracked.")
+        return
+        
+    try:
+        resp = requests.get(f"{SWARM_API}/status/{current_task_id}", timeout=TIMEOUT)
+        
+        if resp.status_code == 404:
+            await update.message.reply_text("❌ Task ID not found on the server.")
+            return
+            
+        data = resp.json()
+
+        status = data.get("status", "unknown")
+        result = data.get("result")
+
+        status_emoji = {
+            "idle": "💤",
+            "running": "⏳",
+            "completed": "✅",
+            "failed": "❌",
+            "cancelled": "🛑",
+        }.get(status, "❓")
+
+        text = (
+            f"{status_emoji} *Swarm Status: {status.upper()}*\n"
+            f"ID: `{current_task_id}`\n"
+            f"Task: `{current_task_input}`\n"
+        )
+
+        if result:
+            # Truncate very long results for Telegram
+            display_result = result[:2000]
+            if len(result) > 2000:
+                display_result += "\n... (truncated)"
+            text += f"\n*Result:*\n```\n{display_result}\n```"
+
+        await update.message.reply_text(text, parse_mode="Markdown")
+
+    except requests.ConnectionError:
+        await update.message.reply_text(
+            "❌ *Swarm System is not running.*",
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+
+
+async def handle_swarm_stop(update: Update, context):
+    """Cancel the currently running swarm task."""
+    global current_task_id
+    
+    if not current_task_id:
+        await update.message.reply_text("💤 No swarm task to cancel.")
+        return
+        
+    try:
+        resp = requests.post(f"{SWARM_API}/cancel/{current_task_id}", timeout=TIMEOUT)
+        
+        if resp.status_code == 404:
+            await update.message.reply_text("❌ Task not found on the server.")
+            return
+            
+        data = resp.json()
+        message = data.get("status", "Unknown response.")
+        await update.message.reply_text(f"🛑 Task {current_task_id} marked as {message}.")
+    except requests.ConnectionError:
+        await update.message.reply_text(
+            "❌ *Swarm System is not running.*",
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+
+
+PLUGINS = [
+    {
+        "name": "Swarm",
+        "command": "swarm",
+        "description": "Run a task on the Swarm Optimization System",
+        "handler": handle_swarm,
+        "row": 5,
+    },
+    {
+        "name": "S.Status",
+        "command": "swarm_status",
+        "description": "Check swarm task status — formerly 'Swarm Status'",
+        "handler": handle_swarm_status,
+        "row": 5,
+    },
+    {
+        "name": "S.Stop",
+        "command": "swarm_stop",
+        "description": "Cancel the running swarm task — formerly 'Swarm Stop'",
+        "handler": handle_swarm_stop,
+        "row": 5,
+    },
+]

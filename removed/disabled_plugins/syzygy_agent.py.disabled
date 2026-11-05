@@ -1,0 +1,67 @@
+# C:\Users\SUBU\Documents\1MY_APPs\TelegramBot\Wexxy-pc-bot\plugins\syzygy_agent.py
+import subprocess
+import os
+import sys
+import threading
+from telegram import Update
+from telegram.ext import ContextTypes
+
+# Path configuration
+SYZYGY_PYTHON = r"C:\Users\SUBU\.conda\envs\syzygy_maxx\python.exe"
+SYZYGY_GRAPH = r"C:\Users\SUBU\Documents\1MY_APPs\SYZYGY_MAXX\cns_graph.py"
+SYZYGY_GOAL = r"C:\Users\SUBU\Documents\1MY_APPs\SYZYGY_MAXX\goal.txt"
+SYZYGY_COMPLETION = r"C:\Users\SUBU\Documents\1MY_APPs\SYZYGY_MAXX\response\completion_flag.txt"
+
+def run_graph_in_background():
+    try:
+        # Delete previous completion flag to ensure fresh run
+        if os.path.exists(SYZYGY_COMPLETION):
+            try:
+                os.remove(SYZYGY_COMPLETION)
+            except OSError:
+                pass
+                
+        # Execute the LangGraph CNS loop headlessly
+        subprocess.run([SYZYGY_PYTHON, SYZYGY_GRAPH], cwd=os.path.dirname(SYZYGY_GRAPH))
+    except Exception as e:
+        print(f"[Syzygy Subprocess Error] {e}")
+
+async def handle_autonomous(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ *Usage Error*\n\n"
+            "Format: `/autonomous <goal>`\n"
+            "Example:\n"
+            "`/autonomous Open notepad and type Hello World`",
+            parse_mode="Markdown"
+        )
+        return
+
+    goal = " ".join(context.args)
+    
+    # 1. Write the user's objective to goal.txt
+    try:
+        os.makedirs(os.path.dirname(SYZYGY_GOAL), exist_ok=True)
+        with open(SYZYGY_GOAL, "w", encoding="utf-8") as f:
+            f.write(goal)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Failed to set goal: {e}")
+        return
+
+    await update.message.reply_text(
+        f"🧠 **[CNS Swarm Activated]**\n"
+        f"Goal: `{goal}`\n\n"
+        f"The agent will run autonomously and send you real-time updates and screenshots of your desktop.",
+        parse_mode="Markdown"
+    )
+
+    # 2. Trigger the CNS graph in a background thread so the bot remains responsive
+    threading.Thread(target=run_graph_in_background, daemon=True).start()
+
+PLUGIN = {
+    "name": "Agent",
+    "command": "autonomous",
+    "description": "Trigger the SYZYGY_MAXX CNS graph to run autonomously — formerly 'Autonomous Agent'",
+    "handler": handle_autonomous,
+    "row": 6,
+}

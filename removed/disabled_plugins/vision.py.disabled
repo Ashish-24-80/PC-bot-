@@ -1,0 +1,49 @@
+import pyautogui
+import os
+import asyncio
+from telegram import Update
+
+async def handle_vision(update: Update, context):
+    """
+    Take a screenshot and (attempt) to read text.
+    Jugaad: If OCR is missing, just send the screenshot and use the Agent to describe.
+    """
+    msg = await update.message.reply_text("📸 Taking screenshot for analysis...")
+    
+    screenshot_path = "vision_temp.png"
+    pyautogui.screenshot(screenshot_path)
+    
+    # Try OCR
+    text_content = ""
+    import pytesseract
+    # Verify Tesseract executable exists
+    tesseract_path = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    if not os.path.exists(tesseract_path):
+        text_content = "(OCR not available: Tesseract executable not found. Please install Tesseract OCR from https://github.com/tesseract-ocr/tesseract/wiki)"
+    else:
+        try:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_path
+            text_content = pytesseract.image_to_string(screenshot_path).strip()
+        except Exception as e:
+            text_content = f"(OCR failed: {e})"
+
+    # Send the image
+    with open(screenshot_path, 'rb') as photo:
+        await update.message.reply_photo(
+            photo, 
+            caption=f"📝 *OCR Detected Text:*\n```\n{text_content[:500]}\n```",
+            parse_mode="Markdown"
+        )
+    
+    # Cleanup
+    if os.path.exists(screenshot_path):
+        os.remove(screenshot_path)
+    await msg.delete()
+
+PLUGIN = {
+    "name": "Screen Insight",
+    "command": "VizOcr",
+    "description": "See what's on screen and read text",
+    "handler": handle_vision,
+    "row": 5,
+}
