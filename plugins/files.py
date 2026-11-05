@@ -130,14 +130,17 @@ async def handle_document(update: Update, context):
         msg = await update.message.reply_text(f"📥 Downloading `{filename}`...", parse_mode="Markdown")
         await file.download_to_drive(filepath)
 
-        # Image analysis routing
+        # Image analysis routing (if voice/gemma4 pipeline is available)
         if route == "gemma4" and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-            await msg.edit_text("👁️ *Analyzing Image natively with Gemma 4...*", parse_mode="Markdown")
-            from plugins.voice import _ask_gemma4_multimodal
-            caption = update.message.caption or "Please describe this image in detail."
-            response = await _ask_gemma4_multimodal(prompt=caption, image_path=filepath)
-            await msg.edit_text(f"🤖 *Gemma 4 Vision:*\n{response}", parse_mode="Markdown")
-            return
+            try:
+                from plugins.voice import _ask_gemma4_multimodal
+                await msg.edit_text("👁️ *Analyzing Image natively with Gemma 4...*", parse_mode="Markdown")
+                caption = update.message.caption or "Please describe this image in detail."
+                response = await _ask_gemma4_multimodal(prompt=caption, image_path=filepath)
+                await msg.edit_text(f"🤖 *Gemma 4 Vision:*\n{response}", parse_mode="Markdown")
+                return
+            except (ImportError, Exception):
+                pass  # Fall through to standard file saving if voice/vision model is absent
 
         # Default save to Downloads or specified route
         download_dir = route if os.path.isabs(route) and os.path.isdir(route) else os.path.join(os.path.expanduser("~"), "Downloads", "WexxyBot")

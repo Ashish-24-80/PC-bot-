@@ -180,6 +180,10 @@ def main():
     from plugins.runner import handle_run
     app.add_handler(CommandHandler("run", admin_only(handle_run)))
 
+    # /media_route commands (media routing)
+    app.add_handler(CommandHandler("media_route_reveal", admin_only(handle_media_route_reveal)))
+    app.add_handler(CommandHandler("change_media_route", admin_only(handle_change_media_route)))
+
     # /startllm + voice pipeline (optional plugin)
     try:
         from plugins.voice import handle_startllm, handle_voice, handle_text, handle_gemma_cmd, handle_qwen_cmd, handle_gemma4_cmd
@@ -187,8 +191,6 @@ def main():
         app.add_handler(CommandHandler("gemma4", admin_only(handle_gemma4_cmd)))
         app.add_handler(CommandHandler("gemma", admin_only(handle_gemma_cmd)))
         app.add_handler(CommandHandler("qwen", admin_only(handle_qwen_cmd)))
-        app.add_handler(CommandHandler("media_route_reveal", admin_only(handle_media_route_reveal)))
-        app.add_handler(CommandHandler("change_media_route", admin_only(handle_change_media_route)))
         app.add_handler(MessageHandler(filters.VOICE, admin_only(handle_voice)))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, admin_only(handle_text)))
     except ImportError:

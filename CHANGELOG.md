@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Automatic Command Autocomplete Sync**: Dynamic registration of all loaded plugins directly with Telegram's bot menu via `application.bot.set_my_commands()`.
 
 ### Fixed
+- **Media Routing Registration**: Moved `/media_route_reveal` and `/change_media_route` handlers outside the optional `plugins.voice` try block in `bot.py` so they are always registered even when voice packages are absent.
+- **Multimodal Image Upload Fallback**: Protected incoming image uploads in `plugins/files.py` with try/except so absence of `plugins.voice` gracefully falls back to saving files in `Downloads/WexxyBot/`.
+- **Nebula Dashboard Template Path**: Fixed `nebula_dashboard/app.py` to resolve `index.html` relative to script directory rather than process working directory.
+- **Documentation Command Accuracy**: Updated `README.md` and `PROJECT_MANUAL.md` command catalogs to reflect `/rustdesk`, `/pc_status`, `/monitor` (Guardian mode), and web tools.
 - Fixed touchpad coordinate letterboxing issue via `getAbsoluteCoords()` in `trackpad.html`.
 - Enforced `--no-autoupdate` on `cloudflared.exe` Popen call to avoid tunnel freezing.
 - Added automatic process termination for orphaned `cloudflared.exe` instances.
@@ -74,3 +78,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remote mouse and keyboard emulation via `pyautogui`.
 - Remote touchpad web portal served via Flask and Cloudflare tunnels.
 - Windows power management (lock, shutdown, restart, sleep, logout).
+

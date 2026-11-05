@@ -150,3 +150,4 @@ python -c "import bot; print('Bot module imports clean.')"
 3. **`libs/` Directory Warning:**
    - `libs/` contains vendorized pip packages including PyTorch and OpenCV.
    - Do **not** commit `libs/` to git; it is ignored via `.gitignore` to prevent repository bloat.
+

@@ -56,3 +56,4 @@ Files belonging to the separate SwarmSystem project (`C:\Users\SUBU\Documents\1M
 - `swarm.log`: Output log from swarm experiment runs.
 - `swarm_tetra_addon/` & `swarm_tetra_addon.zip`: Blender 5.1 addon for 3D visualization.
 - `swarm_tetra_visualizer.py`: Blender Python script for rendering telemetry.
+

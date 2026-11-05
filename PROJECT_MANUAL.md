@@ -494,25 +494,25 @@ Wexxy's features are organized into modular files within the `plugins/` director
 
 | Filename | Plugin Name | Commands | Row | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `antigravity.py` | `Ide Control` | `/control_antigravity <prompt>` | 5 | Focuses the IDE, copies the prompt, and pastes it into the active workspace. |
+| `antigravity.py` | `IDE` | `/control_antigravity <prompt>` | 5 | Focuses the IDE, copies the prompt, and pastes it into the active workspace. |
 | `apps.py` | `Apps` | `/apps` | 3 | Lists and indexes installed applications and system shortcuts. |
-| `close.py` | `Close Window` | `/close` | 1 | Sends the `Alt+F4` key combination to close the active window. |
+| `close.py` | `CK` | `/close` | 4 | Sends the `Alt+F4` key combination to close the active window. |
 | `easy_ocr.py` | `OCR` | `/ocr` | 5 | Captures screen and performs CPU/GPU OCR using EasyOCR without requiring Tesseract. |
-| `files.py` | `File Manager` | `/find`, `/fetch`, `/ls` | 4 | Search, download, and browse files. Handles incoming uploads. |
-| `help.py` | `Help` | `/help` | 1 | Lists all registered plugins and their command guides. |
-| `info.py` | `PC Status` | `/info` | 1 | Returns current CPU, RAM, and Disk space stats. |
-| `launcher.py` | `Launcher` | `/launch <app>` | 3 | Launches programs by typing their name in the Windows Start menu. |
-| `monitor.py` | `Display` | `/monitor_off` | 1 | Disables primary display output. |
+| `files.py` | `Finder / Fetcher / Dir` | `/find`, `/fetch`, `/ls` | 4 | Search, download, and browse files. Handles incoming uploads. |
+| `help.py` | `Help ❓` | `/help` | 0 | Lists all registered plugins and their command guides. |
+| `info.py` | `Status` | `/pc_status` | 0 | Returns current CPU, RAM, and Disk space stats. |
+| `launcher.py` | `Launcher` | `/launch <app>` | 99 | Launches programs by typing their name in the Windows Start menu. |
+| `monitor.py` | `Guardian` | `/monitor` | 5 | Guardian mode: background resource alerts & status monitoring. |
 | `routing.py` | `Media Routing` | `/media_route_reveal`, `/change_media_route` | Core | Dynamic router for media and voice destinations (gemma4, whisper, qwen, or custom folder). |
-| `runner.py` | `Terminal` | `/run <cmd>` | 99 | Executes shell commands in CMD or PowerShell. |
-| `screenshot.py` | `Screenshot` | `/screenshot` | 1 | Captures the active monitor and sends the image to Telegram. |
+| `runner.py` | `cmd-runner` | `/run <cmd>` | 99 | Executes shell commands in CMD or PowerShell. |
+| `screenshot.py` | `Shot` | `/screenshot` | 0 | Captures the active monitor and sends the image to Telegram. |
 | `shell.py` | `Shell` | `/sh <cmd>` | 5 | Linux-like interactive persistent shell session (ls, cd, pwd, cat, mkdir, rm, mv, cp, tree...). |
 | `software.py` | `Winget` | `/winget <cmd> <app>` | 4 | Windows Package Manager integration (search, install, upgrade, list). |
-| `system.py` | `Power` | `/lock`, `/shutdown`, `/restart`, `/sleep`, `/logout` | 2 | Triggers system state modifications. |
-| `touchpad.py` | `Touchpad` | `/touchpad`, `/stop_touchpad` | 4 | Starts the remote touchpad and MJPEG streaming server. |
+| `system.py` | `Sleep / Lock / Logout` | `/sleep`, `/lock`, `/logout` | 99 | Triggers system state modifications. |
+| `touchpad.py` | `RustDesk / Stop RustDesk` | `/rustdesk`, `/stop_rustdesk` | 4 | Launches and stops RustDesk remote desktop session (alias: `/touchpad`). |
 | `voice.py` | `Voice AI` | `/startllm` | 99 | Transcribes voice messages and routes them through local LLMs (optional plugin). |
-| `volume.py` | `Volume` | `/mute`, `/vol_up`, `/vol_down` | 1 | Controls the system audio level via `pycaw`. |
-| `web.py` | `Web Tools` | `/web_search`, `/open_url` | 3 | Handles browser operations and online search queries. |
+| `volume.py` | `Mute / Vol+ / Vol-` | `/mute`, `/vol_up`, `/vol_down` | 3 | Controls the system audio level via `pycaw`. |
+| `web.py` | `Browser / Search / WebAI` | `/web`, `/web_search`, `/web_ai` | 4 | Handles browser operations, Google searches, and AI queries. |
 
 ---
 

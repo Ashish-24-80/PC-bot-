@@ -101,8 +101,8 @@ Designed as both a standalone personal remote desktop companion and a **Manual H
 | :--- | :--- | :--- |
 | `/start` | Core | Display bot status and launch persistent quick-action keyboard |
 | `/help` | `help.py` | Display full command directory and usage instructions |
-| `/touchpad` | `touchpad.py` | Start Flask streaming server and generate Cloudflare tunnel link |
-| `/stop_touchpad` | `touchpad.py` | Terminate active touchpad server and close Cloudflare tunnel |
+| `/rustdesk` | `touchpad.py` | Launch RustDesk remote desktop control (alias: `/touchpad`) |
+| `/stop_rustdesk` | `touchpad.py` | Terminate active RustDesk session |
 | `/sh <cmd>` | `shell.py` | Run interactive Linux-style shell session (`ls`, `cd`, `cat`, etc.) |
 | `/winget <cmd> <app>` | `software.py` | Manage packages via winget (`search`, `install`, `upgrade`, `list`) |
 | `/ocr` | `easy_ocr.py` | Capture screen and perform OCR on active monitor |
@@ -114,12 +114,16 @@ Designed as both a standalone personal remote desktop companion and a **Manual H
 | `/fetch <path>` | `files.py` | Download file from PC directly to Telegram |
 | `/ls <dir>` | `files.py` | Directory listing of local folders |
 | `/screenshot` | `screenshot.py` | Capture primary screen and send image to Telegram |
-| `/info` | `info.py` | Hardware status (CPU, RAM, Disk utilization) |
+| `/pc_status` | `info.py` | Hardware status (CPU, RAM, Disk utilization) |
+| `/monitor` | `monitor.py` | Toggle Guardian background resource monitoring & critical alerts |
+| `/close` | `close.py` | Send `Alt+F4` to close active window |
+| `/web <url>` | `web.py` | Open website in default browser |
+| `/web_search <query>` | `web.py` | Search Google in default browser |
+| `/web_ai <prompt>` | `web.py` | Open Perplexity AI search in browser |
 | `/media_route_reveal` | `routing.py` | Check current routing destination for audio/images |
 | `/change_media_route <target>` | `routing.py` | Route media to Gemma4, Whisper, Qwen, or folder |
 | `/vol_up` / `/vol_down` / `/mute`| `volume.py` | System volume control |
-| `/monitor_off` | `monitor.py` | Power down primary monitor display |
-| `/lock` / `/restart` / `/sleep` | `system.py` | System power states |
+| `/sleep` / `/lock` / `/logout` | `system.py` | System power states |
 | `/restart_bot` | Core | Gracefully reload bot process |
 
 ---
@@ -161,3 +165,4 @@ Autonomous agents working in or with this codebase should refer to:
 - [`PROJECT_MANUAL.md`](./PROJECT_MANUAL.md): Deep-dive system documentation and troubleshooting playbooks.
 - [`CHANGELOG.md`](./CHANGELOG.md): History of system enhancements and architectural refactors.
 - [`removed/`](./removed/): Archive of deprecated drafts, experimental scratch code, and backup files.
+

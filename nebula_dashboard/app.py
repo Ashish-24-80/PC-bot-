@@ -38,7 +38,9 @@ def processes():
 
 @app.route('/')
 def index():
-    return render_template_string(open('index.html').read(), sys=get_sys_info())
+    html_path = os.path.join(os.path.dirname(__file__), 'index.html')
+    with open(html_path, 'r', encoding='utf-8') as f:
+        return render_template_string(f.read(), sys=get_sys_info())
 
 if __name__ == '__main__':
     app.run(port=5005, debug=True)
